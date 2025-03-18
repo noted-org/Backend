@@ -75,4 +75,9 @@ export class UsersController {
 
     throw new NotFoundException("User with this id does not exist");
   }
+
+  @ApiBearerAuth()
+  @Get("auth/:id")
+  @UseGuards(AuthIdGuard)
+  auth() {}
 }
