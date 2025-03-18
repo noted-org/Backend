@@ -11,11 +11,13 @@ async function bootstrap() {
   app.enableCors();
 
   const config = new DocumentBuilder()
+    .addBearerAuth()
     .setTitle("Noted API")
     .setDescription("The noted API description")
     .setVersion("1.0")
     .addTag("noted")
     .build();
+
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api", app, documentFactory);
 

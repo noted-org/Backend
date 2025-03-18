@@ -10,12 +10,15 @@ import {
   UsePipes,
   NotFoundException,
   ConflictException,
+  UseGuards,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto, createUserSchema } from "./dto/create-user.dto";
 import { UpdateUserDto, updateUserSchema } from "./dto/update-user.dto";
 import { ZodValidationPipe } from "src/validation.pipe";
 import { UniqueConstraintError } from "sequelize";
+import { ApiBearerAuth } from "@nestjs/swagger";
+import { AuthIdGuard } from "src/auth.guard";
 
 @Controller("users")
 export class UsersController {
@@ -50,6 +53,7 @@ export class UsersController {
     throw new NotFoundException();
   }
 
+  @ApiBearerAuth()
   @Patch(":id")
   @UsePipes(new ZodValidationPipe(updateUserSchema))
   update(
@@ -59,7 +63,9 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  @ApiBearerAuth()
   @Delete(":id")
+  @UseGuards(AuthIdGuard)
   async remove(@Param("id", ParseIntPipe) id: number) {
     const ret = await this.usersService.remove(id);
 
