@@ -11,6 +11,7 @@ import {
   NotFoundException,
   ConflictException,
   UseGuards,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto, createUserSchema } from "./dto/create-user.dto";
@@ -19,6 +20,8 @@ import { ZodValidationPipe } from "src/validation.pipe";
 import { UniqueConstraintError } from "sequelize";
 import { ApiBearerAuth } from "@nestjs/swagger";
 import { AuthIdGuard } from "src/auth.guard";
+import { AuthUserDto, authUserSchema } from "./dto/auth-user.dto";
+import { sha512 } from "js-sha512";
 
 @Controller("users")
 export class UsersController {
@@ -76,8 +79,21 @@ export class UsersController {
     throw new NotFoundException("User with this id does not exist");
   }
 
-  @ApiBearerAuth()
-  @Get("auth/:id")
-  @UseGuards(AuthIdGuard)
-  auth() {}
+  @UsePipes(new ZodValidationPipe(authUserSchema))
+  @Post("auth")
+  async auth(@Body() authUserDto: AuthUserDto): Promise<any> {
+    const user = await this.usersService.findOneByUsername(
+      authUserDto.username,
+    );
+
+    if (
+      user &&
+      sha512(authUserDto.password) === user?.dataValues?.password &&
+      user.id
+    ) {
+      return user.id;
+    }
+
+    throw new UnauthorizedException("Wrong credentials");
+  }
 }
