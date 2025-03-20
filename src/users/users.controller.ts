@@ -19,7 +19,7 @@ import { UpdateUserDto, updateUserSchema } from "./dto/update-user.dto";
 import { ZodValidationPipe } from "src/validation.pipe";
 import { UniqueConstraintError } from "sequelize";
 import { ApiBearerAuth } from "@nestjs/swagger";
-import { AuthIdGuard } from "src/auth.guard";
+import { AuthIdGuard, AuthUsernameGuard } from "src/auth.guard";
 import { sha512 } from "js-sha512";
 
 @Controller("users")
@@ -43,8 +43,11 @@ export class UsersController {
 
   @ApiBearerAuth()
   @Get("auth")
-  @UseGuards(AuthIdGuard)
-  auth() {}
+  @UseGuards(AuthUsernameGuard)
+  auth(@Req() request: Request) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return request["user"];
+  }
 
   @Get()
   findAll() {
