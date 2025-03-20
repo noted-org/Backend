@@ -7,11 +7,11 @@ import {
   Param,
   Delete,
   ParseIntPipe,
-  UsePipes,
   NotFoundException,
   ConflictException,
   UseGuards,
-  UnauthorizedException,
+  Req,
+  ForbiddenException,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto, createUserSchema } from "./dto/create-user.dto";
@@ -20,7 +20,6 @@ import { ZodValidationPipe } from "src/validation.pipe";
 import { UniqueConstraintError } from "sequelize";
 import { ApiBearerAuth } from "@nestjs/swagger";
 import { AuthIdGuard } from "src/auth.guard";
-import { AuthUserDto, authUserSchema } from "./dto/auth-user.dto";
 import { sha512 } from "js-sha512";
 
 @Controller("users")
@@ -28,9 +27,11 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @UsePipes(new ZodValidationPipe(createUserSchema))
-  create(@Body() createUserDto: CreateUserDto) {
+  create(
+    @Body(new ZodValidationPipe(createUserSchema)) createUserDto: CreateUserDto,
+  ) {
     try {
+      createUserDto.password = sha512(createUserDto.password);
       return this.usersService.create(createUserDto);
     } catch (error) {
       if (error instanceof UniqueConstraintError) {
@@ -39,6 +40,11 @@ export class UsersController {
       throw error;
     }
   }
+
+  @ApiBearerAuth()
+  @Get("auth")
+  @UseGuards(AuthIdGuard)
+  auth() {}
 
   @Get()
   findAll() {
@@ -58,18 +64,39 @@ export class UsersController {
 
   @ApiBearerAuth()
   @Patch(":id")
-  @UsePipes(new ZodValidationPipe(updateUserSchema))
-  update(
+  @UseGuards(AuthIdGuard)
+  async update(
     @Param("id", ParseIntPipe) id: number,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body(new ZodValidationPipe(updateUserSchema)) updateUserDto: UpdateUserDto,
+    @Req() request: Request,
   ) {
-    return this.usersService.update(id, updateUserDto);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (id !== request["user"]?.id) {
+      throw new ForbiddenException(
+        "You are only allowed to update your own user",
+      );
+    }
+
+    const count = await this.usersService.update(id, updateUserDto);
+
+    if (count[0] === 1) {
+      return this.usersService.findOne(id);
+    }
+
+    throw new NotFoundException("The user was not found");
   }
 
   @ApiBearerAuth()
   @Delete(":id")
   @UseGuards(AuthIdGuard)
-  async remove(@Param("id", ParseIntPipe) id: number) {
+  async remove(@Param("id", ParseIntPipe) id: number, @Req() request: Request) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (id !== request["user"]?.id) {
+      throw new ForbiddenException(
+        "You are only allowed to delete your own user",
+      );
+    }
+
     const ret = await this.usersService.remove(id);
 
     if (ret === 1) {
@@ -77,23 +104,5 @@ export class UsersController {
     }
 
     throw new NotFoundException("User with this id does not exist");
-  }
-
-  @UsePipes(new ZodValidationPipe(authUserSchema))
-  @Post("auth")
-  async auth(@Body() authUserDto: AuthUserDto): Promise<any> {
-    const user = await this.usersService.findOneByUsername(
-      authUserDto.username,
-    );
-
-    if (
-      user &&
-      sha512(authUserDto.password) === user?.dataValues?.password &&
-      user.id
-    ) {
-      return user.id;
-    }
-
-    throw new UnauthorizedException("Wrong credentials");
   }
 }

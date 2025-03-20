@@ -26,29 +26,32 @@ export class AuthIdGuard implements CanActivate {
       throw new UnauthorizedException("Missing or invalid Bearer token");
     }
 
-    const token = authHeader.split(" ")[1];
+    const username = authHeader.split(" ")[1];
+    const password = authHeader.split(" ")[2];
 
     try {
-      let requestedId = 0;
-      try {
-        requestedId = parseInt(request.params.id);
-      } catch {
-        throw new BadRequestException("User id has to be a number");
-      }
-      console.log("password and id: " + token + " " + requestedId);
+      console.log("password and id: " + password + " " + username);
 
-      const user = await this.usersService.findOne(requestedId);
-
-      if (user?.dataValues?.password !== sha512(token)) {
-        throw new ForbiddenException(
-          "You are not allowed to access this resource",
-        );
+      const user = await this.usersService.findOneByUsername(username);
+      console.log(JSON.stringify(user) + " " + sha512(password));
+      console.log(user?.dataValues?.password)
+      console.log(sha512(password))
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (user?.dataValues?.password !== sha512(password)) {
+        throw new ForbiddenException("Wrong credentials");
       }
 
       request["user"] = user;
 
       return true;
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      console.error(error);
       throw new UnauthorizedException("Invalid token");
     }
   }
