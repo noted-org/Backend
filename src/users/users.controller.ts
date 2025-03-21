@@ -30,15 +30,14 @@ export class UsersController {
   create(
     @Body(new ZodValidationPipe(createUserSchema)) createUserDto: CreateUserDto,
   ) {
-    try {
-      createUserDto.password = sha512(createUserDto.password);
-      return this.usersService.create(createUserDto);
-    } catch (error) {
-      if (error instanceof UniqueConstraintError) {
+    createUserDto.password = sha512(createUserDto.password);
+    return this.usersService.create(createUserDto).catch((err) => {
+      if (err.name === "SequelizeUniqueConstraintError") {
         throw new ConflictException("Username already exists");
+      } else {
+        throw err;
       }
-      throw error;
-    }
+    });
   }
 
   @ApiBearerAuth()
@@ -80,7 +79,15 @@ export class UsersController {
       );
     }
 
-    const count = await this.usersService.update(id, updateUserDto);
+    const count = await this.usersService
+      .update(id, updateUserDto)
+      .catch((err) => {
+        if (err.name === "SequelizeUniqueConstraintError") {
+          throw new ConflictException("Username already exists");
+        } else {
+          throw err;
+        }
+      });
 
     if (count[0] === 1) {
       return this.usersService.findOne(id);
