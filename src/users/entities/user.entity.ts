@@ -1,4 +1,5 @@
-import { Column, Table, Model, IsEmail, AllowNull, Unique } from "sequelize-typescript";
+import { Column, Table, Model, IsEmail, AllowNull, Unique, HasMany } from "sequelize-typescript";
+import { Note } from "src/notes/entities/note.entity";
 
 @Table({
   tableName: "users",
@@ -21,4 +22,7 @@ export class User extends Model {
   @AllowNull(false)
   @Column
   email: string;
+
+  @HasMany(() => Note, { onDelete: "CASCADE" })
+  notes: Note[];
 }

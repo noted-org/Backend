@@ -1,4 +1,5 @@
-import { Column, Table, Model, AllowNull } from "sequelize-typescript";
+import { Column, Table, Model, AllowNull, ForeignKey } from "sequelize-typescript";
+import { User } from "src/users/entities/user.entity";
 
 @Table({
   tableName: "note",
@@ -12,7 +13,7 @@ export class Note extends Model {
   @Column
   content: string;
 
-  @AllowNull(false)
+  @ForeignKey(() => User)
   @Column
   author: number;
 }
