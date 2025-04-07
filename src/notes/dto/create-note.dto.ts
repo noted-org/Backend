@@ -5,6 +5,7 @@ export const createNoteSchema = z
   .object({
     name: z.string().nonempty(),
     content: z.string(),
+    tags: z.array(z.number()).optional(),
   })
   .required();
 

@@ -14,17 +14,27 @@ export class NotesService {
     private tagRepository: typeof Tag,
   ) {}
 
-  create(createNoteDto: CreateNoteDto, authorId: number) {
+  async create(createNoteDto: CreateNoteDto, authorId: number) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return this.noteRepository.create({
+    const note = await this.noteRepository.create({
       ...(createNoteDto as any),
       author: authorId,
     });
+
+    if (createNoteDto.tags) {
+      await this.addTags(note.id, createNoteDto.tags);
+    }
+
+    return note;
   }
 
   findAll() {
     return this.noteRepository.findAll({
-      include: [{ model: Tag }],
+      include: [{
+        model: Tag,
+        attributes: ["id", "name"],
+        through: {attributes: []},
+      }],
     });
   }
 
