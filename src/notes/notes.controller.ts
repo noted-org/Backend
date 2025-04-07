@@ -18,10 +18,11 @@ import { AuthIdGuard } from "src/auth.guard";
 import { CreateNoteDto, createNoteSchema } from "./dto/create-note.dto";
 import { NotesService } from "./notes.service";
 import { UpdateNoteDto, updateNoteSchema } from "./dto/update-note.dto";
+import { AddTagsDto, addTagsSchema } from "./dto/add-tags-dto";
 
 @Controller("notes")
 export class NotesController {
-  constructor(private readonly notesService: NotesService) {}
+  constructor(private readonly notesService: NotesService) { }
 
   @Get()
   findAll() {
@@ -65,7 +66,7 @@ export class NotesController {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (note.author !== request["user"]?.id) {
-      throw new ForbiddenException("Your cannot edit notes from other users");
+      throw new ForbiddenException("You cannot edit notes from other users");
     }
 
     const count = await this.notesService.update(id, updateNoteDto);
@@ -89,7 +90,7 @@ export class NotesController {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (note?.dataValues?.author !== request["user"]?.id) {
-      throw new ForbiddenException("Your cannot delete notes from other users");
+      throw new ForbiddenException("You cannot delete notes from other users");
     }
 
     const ret = await this.notesService.remove(id);
@@ -99,5 +100,49 @@ export class NotesController {
     }
 
     throw new NotFoundException("Note with this id does not exist");
+  }
+
+  @ApiBearerAuth()
+  @Post(":id/tags")
+  @UseGuards(AuthIdGuard)
+  async addTag(
+    @Param("id", ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(addTagsSchema)) addTagsDto: AddTagsDto,
+    @Req() request: Request,
+  ) {
+    const note = await this.notesService.findOne(id);
+
+    if (!note) {
+      throw new NotFoundException("Note with this id does not exist");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (note?.dataValues?.author !== request["user"]?.id) {
+      throw new ForbiddenException("You cannot edit notes from other users");
+    }
+
+    await this.notesService.addTags(id, addTagsDto.tags);
+  }
+
+  @ApiBearerAuth()
+  @Delete(":id/tags/:tagId")
+  @UseGuards(AuthIdGuard)
+  async removeTag(
+    @Param("id", ParseIntPipe) id: number,
+    @Param("tagId", ParseIntPipe) tagId: number,
+    @Req() request: Request,
+  ) {
+    const note = await this.notesService.findOne(id);
+
+    if (!note) {
+      throw new NotFoundException("Note with this id does not exist");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (note?.dataValues?.author !== request["user"]?.id) {
+      throw new ForbiddenException("You cannot edit notes from other users");
+    }
+
+    await this.notesService.removeTag(id, tagId);
   }
 }

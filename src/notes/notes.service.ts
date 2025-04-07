@@ -1,14 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { Note } from "./entities/note.entity";
 import { InjectModel } from "@nestjs/sequelize";
 import { CreateNoteDto } from "./dto/create-note.dto";
 import { UpdateNoteDto } from "./dto/update-note.dto";
+import { Tag } from "../tags/entities/tag.entity";
 
 @Injectable()
 export class NotesService {
   constructor(
     @InjectModel(Note)
     private noteRepository: typeof Note,
+    @InjectModel(Tag)
+    private tagRepository: typeof Tag,
   ) {}
 
   create(createNoteDto: CreateNoteDto, authorId: number) {
@@ -20,7 +23,9 @@ export class NotesService {
   }
 
   findAll() {
-    return this.noteRepository.findAll();
+    return this.noteRepository.findAll({
+      include: [{ model: Tag }],
+    });
   }
 
   findOne(id: number) {
@@ -28,6 +33,7 @@ export class NotesService {
       where: {
         id: id,
       },
+      include: [{ model: Tag }],
     });
   }
 
@@ -45,5 +51,57 @@ export class NotesService {
         id: id,
       },
     });
+  }
+
+  addTags(noteId: number, tags: number[]) {
+    const tagRequests = tags.map((tagId) => {
+      return this.tagRepository.findOne({
+        where: {
+          id: tagId,
+        },
+      })
+    })
+
+    const instances = Promise.all(tagRequests)
+
+    return this.noteRepository.findOne({
+      where: {
+        id: noteId,
+      },
+    }).then((note) => {
+      if (!note) {
+        throw new NotFoundException("Note not found");
+      }
+
+      return instances.then((tags) => {
+        tags.forEach((tag) => {
+          if (!tag) {
+            throw new NotFoundException("Tag not found");
+          }
+          note.$add("tags", tag);
+        })
+        return note.save();
+      })
+    })
+  }
+
+  async removeTag(noteId: number, tagId: number) {
+    const tag = await this.tagRepository.findOne({
+      where: {
+        id: tagId,
+      }
+    })
+    const note = await this.noteRepository.findOne({
+      where: {
+        id: noteId,
+      }
+    })
+
+    if (!note || !tag) {
+      throw new NotFoundException("Note or tag not found");
+    }
+
+    note.$remove("tags", tag)
+    note.save()
   }
 }
