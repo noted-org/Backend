@@ -19,10 +19,14 @@ import { CreateNoteDto, createNoteSchema } from "./dto/create-note.dto";
 import { NotesService } from "./notes.service";
 import { UpdateNoteDto, updateNoteSchema } from "./dto/update-note.dto";
 import { AddTagsDto, addTagsSchema } from "./dto/add-tags-dto";
+import { TagsService } from "src/tags/tags.service";
 
 @Controller("notes")
 export class NotesController {
-  constructor(private readonly notesService: NotesService) { }
+  constructor(
+    private readonly notesService: NotesService,
+    private readonly tagsService: TagsService,
+  ) { }
 
   @Get()
   findAll() {
@@ -47,7 +51,6 @@ export class NotesController {
     @Body(new ZodValidationPipe(createNoteSchema)) createNoteDto: CreateNoteDto,
     @Req() request: Request,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
     return this.notesService.create(createNoteDto, request["user"]?.id);
   }
 
@@ -64,7 +67,6 @@ export class NotesController {
       throw new NotFoundException("Note with this id does not exist");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (note.author !== request["user"]?.id) {
       throw new ForbiddenException("You cannot edit notes from other users");
     }
@@ -116,9 +118,15 @@ export class NotesController {
       throw new NotFoundException("Note with this id does not exist");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (note?.dataValues?.author !== request["user"]?.id) {
       throw new ForbiddenException("You cannot edit notes from other users");
+    }
+
+    const tagsOfUser = await this.tagsService.findAll(request["user"]?.id);
+    if (addTagsDto.tags.filter((tag) => {
+      return !tagsOfUser.some((userTag) => userTag.id === tag);
+    }).length > 0) {
+      throw new NotFoundException("One or more tags do not exist for your user");
     }
 
     await this.notesService.addTags(id, addTagsDto.tags);
@@ -138,7 +146,6 @@ export class NotesController {
       throw new NotFoundException("Note with this id does not exist");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (note?.dataValues?.author !== request["user"]?.id) {
       throw new ForbiddenException("You cannot edit notes from other users");
     }

@@ -10,12 +10,19 @@ export class TagsService {
     private tagRepository: typeof Tag,
   ) {}
 
-  create(createUserDto: CreateTagDto) {
-    return this.tagRepository.create(createUserDto as any);
+  create(createUserDto: CreateTagDto, userId: number) {
+    return this.tagRepository.create({
+      ...(createUserDto as any),
+      userId: userId,
+    });
   }
 
-  findAll() {
-    return this.tagRepository.findAll();
+  findAll(userId: number) {
+    return this.tagRepository.findAll({ where: { userId: userId } });
+  }
+
+  findOne(id: number) {
+    return this.tagRepository.findOne({ where: { id: id } });
   }
 
   remove(id: number) {
