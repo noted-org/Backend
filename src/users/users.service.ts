@@ -16,7 +16,11 @@ export class UsersService {
   }
 
   findAll() {
-    return this.userRepository.findAll();
+    return this.userRepository.findAll({
+      attributes: {
+        exclude: ["password", "profilePicture"],
+      },
+    });
   }
 
   findOne(id: number) {
@@ -24,6 +28,18 @@ export class UsersService {
       where: {
         id: id,
       },
+      attributes: {
+        exclude: ["profilePicture"],
+      },
+    });
+  }
+
+  getProfilePicture(id: number) {
+    return this.userRepository.findOne({
+      where: {
+        id: id,
+      },
+      attributes: ["profilePicture"],
     });
   }
 
@@ -31,6 +47,9 @@ export class UsersService {
     return this.userRepository.findOne({
       where: {
         username: username,
+      },
+      attributes: {
+        exclude: ["profilePicture"],
       },
     });
   }
