@@ -11,9 +11,10 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  Query,
 } from "@nestjs/common";
 import { ZodValidationPipe } from "src/validation.pipe";
-import { ApiBearerAuth } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
 import { AuthIdGuard } from "src/auth.guard";
 import { CreateNoteDto, createNoteSchema } from "./dto/create-note.dto";
 import { NotesService } from "./notes.service";
@@ -29,7 +30,12 @@ export class NotesController {
   ) { }
 
   @Get()
-  findAll() {
+  @ApiQuery({ name: "user", required: false, type: Number, description: "Filter notes by user ID" })
+  findAll(@Query("user") user?: number) {
+	if (user) {
+	  return this.notesService.findAllByUser(user);
+	}	   
+
     return this.notesService.findAll();
   }
 
