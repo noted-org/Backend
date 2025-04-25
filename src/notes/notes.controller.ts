@@ -158,4 +158,47 @@ export class NotesController {
 
     await this.notesService.removeTag(id, tagId);
   }
+
+
+	@ApiBearerAuth()
+	@Get(":id/summarize")
+	@UseGuards(AuthIdGuard)
+	async summarize(
+		@Param("id", ParseIntPipe) id: number,
+		@Req() request: Request,
+	) {
+		const note = await this.notesService.findOne(id);
+
+		if (!note) {
+			throw new NotFoundException("Note with this id does not exist");
+		}
+
+		if (note?.dataValues?.author !== request["user"]?.id) {
+			throw new ForbiddenException("You cannot view notes from other users");
+		}
+
+		const summary = await this.notesService.summarizeNote(id);
+		return summary.candidates[0].content.parts[0].text;
+	}
+
+	@ApiBearerAuth()
+	@Get(":id/questions")
+	@UseGuards(AuthIdGuard)
+	async generateQuestions(
+		@Param("id", ParseIntPipe) id: number,
+		@Req() request: Request,
+	) {
+		const note = await this.notesService.findOne(id);
+
+		if (!note) {
+			throw new NotFoundException("Note with this id does not exist");
+		}
+
+		if (note?.dataValues?.author !== request["user"]?.id) {
+			throw new ForbiddenException("You cannot view notes from other users");
+		}
+
+		const summary = await this.notesService.generateQuestions(id);
+		return summary.candidates[0].content.parts[0].text;
+	}
 }

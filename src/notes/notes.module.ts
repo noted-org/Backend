@@ -7,14 +7,14 @@ import { UsersService } from "src/users/users.service";
 import { User } from "src/users/entities/user.entity";
 import { Tag } from "../tags/entities/tag.entity";
 import { TagsService } from "src/tags/tags.service";
+import { HttpModule } from "@nestjs/axios";
 
 @Module({
-  imports: [
-    SequelizeModule.forFeature([Note]),
-    SequelizeModule.forFeature([User]),
-    SequelizeModule.forFeature([Tag]),
-  ],
-  controllers: [NotesController],
-  providers: [NotesService, UsersService, TagsService],
+	imports: [
+		SequelizeModule.forFeature([Note, User, Tag]),
+		HttpModule,
+	],
+	controllers: [NotesController],
+	providers: [NotesService, UsersService, TagsService],
 })
 export class NotesModule {}

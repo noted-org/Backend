@@ -8,8 +8,7 @@ import { User } from "src/users/entities/user.entity";
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([Tag]),
-    SequelizeModule.forFeature([User]),
+    SequelizeModule.forFeature([Tag, User]),
   ],
   controllers: [TagsController],
   providers: [TagsService, UsersService],

@@ -4,6 +4,11 @@ import { InjectModel } from "@nestjs/sequelize";
 import { CreateNoteDto } from "./dto/create-note.dto";
 import { UpdateNoteDto } from "./dto/update-note.dto";
 import { Tag } from "../tags/entities/tag.entity";
+import { HttpService } from "@nestjs/axios";
+import { firstValueFrom } from "rxjs";
+import "dotenv/config";
+
+const API_KEY=process.env.GOOGLE_AI_STUDIO_API_KEY;
 
 @Injectable()
 export class NotesService {
@@ -12,6 +17,7 @@ export class NotesService {
     private noteRepository: typeof Note,
     @InjectModel(Tag)
     private tagRepository: typeof Tag,
+    private readonly httpService: HttpService,
   ) {}
 
   async create(createNoteDto: CreateNoteDto, authorId: number) {
@@ -126,5 +132,55 @@ export class NotesService {
 
     note.$remove("tags", tag)
     note.save()
+  }
+
+  async summarizeNote(noteId: number) {
+    const note = await this.noteRepository.findOne({
+      where: {
+        id: noteId,
+      },
+    });
+
+    if (!note) {
+      throw new NotFoundException("Note not found");
+    }
+
+    const response = await firstValueFrom(
+      this.httpService.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
+        {
+          contents: [{
+            parts: [{text: `Summarize the following note: ${note.dataValues.content}`}],
+          }],
+        },
+      )
+    )
+    
+    return response.data
+  }
+  
+  async generateQuestions(noteId: number) {
+    const note = await this.noteRepository.findOne({
+      where: {
+        id: noteId,
+      },
+    });
+
+    if (!note) {
+      throw new NotFoundException("Note not found");
+    }
+
+    const response = await firstValueFrom(
+      this.httpService.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
+        {
+          contents: [{
+            parts: [{text: `Generate some questions in the format "- [question]\n- [question]\n..."for the following note: ${note.dataValues.content}`}],
+          }],
+        },
+      )
+    )
+    
+    return response.data
   }
 }
