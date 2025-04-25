@@ -44,6 +44,19 @@ export class NotesService {
     });
   }
 
+  findAllByUser(userId: number) {
+    return this.noteRepository.findAll({
+      where: {
+        author: userId,
+      },
+      include: [{
+        model: Tag,
+        attributes: ["id", "name"],
+        through: {attributes: []},
+      }],
+    });
+  }
+
   findOne(id: number) {
     return this.noteRepository.findOne({
       where: {

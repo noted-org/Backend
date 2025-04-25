@@ -1,19 +1,20 @@
 import {
-	Controller,
-	Get,
-	Post,
-	Body,
-	Patch,
-	Param,
-	Delete,
-	ParseIntPipe,
-	NotFoundException,
-	UseGuards,
-	Req,
-	ForbiddenException,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseIntPipe,
+  NotFoundException,
+  UseGuards,
+  Req,
+  ForbiddenException,
+  Query,
 } from "@nestjs/common";
 import { ZodValidationPipe } from "src/validation.pipe";
-import { ApiBearerAuth } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
 import { AuthIdGuard } from "src/auth.guard";
 import { CreateNoteDto, createNoteSchema } from "./dto/create-note.dto";
 import { NotesService } from "./notes.service";
@@ -23,135 +24,141 @@ import { TagsService } from "src/tags/tags.service";
 
 @Controller("notes")
 export class NotesController {
-	constructor(
-		private readonly notesService: NotesService,
-		private readonly tagsService: TagsService,
-	) { }
+  constructor(
+    private readonly notesService: NotesService,
+    private readonly tagsService: TagsService,
+  ) { }
 
-	@Get()
-	findAll() {
-		return this.notesService.findAll();
-	}
+  @Get()
+  @ApiQuery({ name: "user", required: false, type: Number, description: "Filter notes by user ID" })
+  findAll(@Query("user") user?: number) {
+	if (user) {
+	  return this.notesService.findAllByUser(user);
+	}	   
 
-	@Get(":id")
-	async findOne(@Param("id", ParseIntPipe) id: number) {
-		const answ = await this.notesService.findOne(id);
+    return this.notesService.findAll();
+  }
 
-		if (answ) {
-			return answ;
-		}
+  @Get(":id")
+  async findOne(@Param("id", ParseIntPipe) id: number) {
+    const answ = await this.notesService.findOne(id);
 
-		throw new NotFoundException();
-	}
+    if (answ) {
+      return answ;
+    }
 
-	@ApiBearerAuth()
-	@Post()
-	@UseGuards(AuthIdGuard)
-	create(
-		@Body(new ZodValidationPipe(createNoteSchema)) createNoteDto: CreateNoteDto,
-		@Req() request: Request,
-	) {
-		return this.notesService.create(createNoteDto, request["user"]?.id);
-	}
+    throw new NotFoundException();
+  }
 
-	@ApiBearerAuth()
-	@Patch(":id")
-	async update(
-		@Param("id", ParseIntPipe) id: number,
-		@Body(new ZodValidationPipe(updateNoteSchema)) updateNoteDto: UpdateNoteDto,
-		@Req() request: Request,
-	) {
-		const note = await this.notesService.findOne(id);
+  @ApiBearerAuth()
+  @Post()
+  @UseGuards(AuthIdGuard)
+  create(
+    @Body(new ZodValidationPipe(createNoteSchema)) createNoteDto: CreateNoteDto,
+    @Req() request: Request,
+  ) {
+    return this.notesService.create(createNoteDto, request["user"]?.id);
+  }
 
-		if (!note) {
-			throw new NotFoundException("Note with this id does not exist");
-		}
+  @ApiBearerAuth()
+  @Patch(":id")
+  async update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(updateNoteSchema)) updateNoteDto: UpdateNoteDto,
+    @Req() request: Request,
+  ) {
+    const note = await this.notesService.findOne(id);
 
-		if (note.author !== request["user"]?.id) {
-			throw new ForbiddenException("You cannot edit notes from other users");
-		}
+    if (!note) {
+      throw new NotFoundException("Note with this id does not exist");
+    }
 
-		const count = await this.notesService.update(id, updateNoteDto);
+    if (note.author !== request["user"]?.id) {
+      throw new ForbiddenException("You cannot edit notes from other users");
+    }
 
-		if (count[0] === 1) {
-			return this.notesService.findOne(id);
-		}
+    const count = await this.notesService.update(id, updateNoteDto);
 
-		throw new NotFoundException("The note was not found");
-	}
+    if (count[0] === 1) {
+      return this.notesService.findOne(id);
+    }
 
-	@ApiBearerAuth()
-	@Delete(":id")
-	@UseGuards(AuthIdGuard)
-	async remove(@Param("id", ParseIntPipe) id: number, @Req() request: Request) {
-		const note = await this.notesService.findOne(id);
+    throw new NotFoundException("The note was not found");
+  }
 
-		if (!note) {
-			throw new NotFoundException("Note with this id does not exist");
-		}
+  @ApiBearerAuth()
+  @Delete(":id")
+  @UseGuards(AuthIdGuard)
+  async remove(@Param("id", ParseIntPipe) id: number, @Req() request: Request) {
+    const note = await this.notesService.findOne(id);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (note?.dataValues?.author !== request["user"]?.id) {
-			throw new ForbiddenException("You cannot delete notes from other users");
-		}
+    if (!note) {
+      throw new NotFoundException("Note with this id does not exist");
+    }
 
-		const ret = await this.notesService.remove(id);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (note?.dataValues?.author !== request["user"]?.id) {
+      throw new ForbiddenException("You cannot delete notes from other users");
+    }
 
-		if (ret === 1) {
-			return;
-		}
+    const ret = await this.notesService.remove(id);
 
-		throw new NotFoundException("Note with this id does not exist");
-	}
+    if (ret === 1) {
+      return;
+    }
 
-	@ApiBearerAuth()
-	@Post(":id/tags")
-	@UseGuards(AuthIdGuard)
-	async addTag(
-		@Param("id", ParseIntPipe) id: number,
-		@Body(new ZodValidationPipe(addTagsSchema)) addTagsDto: AddTagsDto,
-		@Req() request: Request,
-	) {
-		const note = await this.notesService.findOne(id);
+    throw new NotFoundException("Note with this id does not exist");
+  }
 
-		if (!note) {
-			throw new NotFoundException("Note with this id does not exist");
-		}
+  @ApiBearerAuth()
+  @Post(":id/tags")
+  @UseGuards(AuthIdGuard)
+  async addTag(
+    @Param("id", ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(addTagsSchema)) addTagsDto: AddTagsDto,
+    @Req() request: Request,
+  ) {
+    const note = await this.notesService.findOne(id);
 
-		if (note?.dataValues?.author !== request["user"]?.id) {
-			throw new ForbiddenException("You cannot edit notes from other users");
-		}
+    if (!note) {
+      throw new NotFoundException("Note with this id does not exist");
+    }
 
-		const tagsOfUser = await this.tagsService.findAll(request["user"]?.id);
-		if (addTagsDto.tags.filter((tag) => {
-			return !tagsOfUser.some((userTag) => userTag.id === tag);
-		}).length > 0) {
-			throw new NotFoundException("One or more tags do not exist for your user");
-		}
+    if (note?.dataValues?.author !== request["user"]?.id) {
+      throw new ForbiddenException("You cannot edit notes from other users");
+    }
 
-		await this.notesService.addTags(id, addTagsDto.tags);
-	}
+    const tagsOfUser = await this.tagsService.findAll(request["user"]?.id);
+    if (addTagsDto.tags.filter((tag) => {
+      return !tagsOfUser.some((userTag) => userTag.id === tag);
+    }).length > 0) {
+      throw new NotFoundException("One or more tags do not exist for your user");
+    }
 
-	@ApiBearerAuth()
-	@Delete(":id/tags/:tagId")
-	@UseGuards(AuthIdGuard)
-	async removeTag(
-		@Param("id", ParseIntPipe) id: number,
-		@Param("tagId", ParseIntPipe) tagId: number,
-		@Req() request: Request,
-	) {
-		const note = await this.notesService.findOne(id);
+    await this.notesService.addTags(id, addTagsDto.tags);
+  }
 
-		if (!note) {
-			throw new NotFoundException("Note with this id does not exist");
-		}
+  @ApiBearerAuth()
+  @Delete(":id/tags/:tagId")
+  @UseGuards(AuthIdGuard)
+  async removeTag(
+    @Param("id", ParseIntPipe) id: number,
+    @Param("tagId", ParseIntPipe) tagId: number,
+    @Req() request: Request,
+  ) {
+    const note = await this.notesService.findOne(id);
 
-		if (note?.dataValues?.author !== request["user"]?.id) {
-			throw new ForbiddenException("You cannot edit notes from other users");
-		}
+    if (!note) {
+      throw new NotFoundException("Note with this id does not exist");
+    }
 
-		await this.notesService.removeTag(id, tagId);
-	}
+    if (note?.dataValues?.author !== request["user"]?.id) {
+      throw new ForbiddenException("You cannot edit notes from other users");
+    }
+
+    await this.notesService.removeTag(id, tagId);
+  }
+
 
 	@ApiBearerAuth()
 	@Get(":id/summarize")

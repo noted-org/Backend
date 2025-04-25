@@ -1,6 +1,13 @@
 import { createZodDto } from "nestjs-zod";
 import { z } from "zod";
 
+const base64ImageRegex = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/;
+
+export const base64ImageSchema = z.string().regex(
+  base64ImageRegex,
+  'Invalid base64 image format. Must be a PNG or JPEG image in data URI format.'
+);
+
 export const createUserSchema = z
   .object({
     nickname: z.string(),
@@ -11,7 +18,7 @@ export const createUserSchema = z
       message: "Invalid password SHA-512 hash",
     }),
     email: z.string().email(),
-  })
-  .required();
+    profilePicture: base64ImageSchema.optional(),
+  });
 
 export class CreateUserDto extends createZodDto(createUserSchema) {}

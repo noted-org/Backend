@@ -23,6 +23,9 @@ export class User extends Model {
   @Column
   email: string;
 
+  @Column
+  profilePicture?: string;
+
   @HasMany(() => Note, { onDelete: "CASCADE" })
   notes: Note[];
 }

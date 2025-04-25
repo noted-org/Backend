@@ -6,11 +6,12 @@ import { User } from "src/users/entities/user.entity";
 })
 export class Tag extends Model {
   @AllowNull(false)
-  @Unique
+  @Unique("unique_tag_name")
   @Column
   name: string;
 
   @ForeignKey(() => User)
+  @Unique("unique_tag_name")
   @Column({
     onDelete: "CASCADE",
   })
