@@ -175,7 +175,7 @@ export class NotesService {
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
         {
           contents: [{
-            parts: [{text: `Generate some questions in the format "- [question]\n- [question]\n..."for the following note: ${note.dataValues.content}`}],
+            parts: [{text: `Generate some questions in the format "- [question]\n[TAB][answer]\n- [question]\n[TAB][answer]\n..."for the following note and without any dialog or summary of the note, just directly the questions and answers: ${note.dataValues.content}`}],
           }],
         },
       )
